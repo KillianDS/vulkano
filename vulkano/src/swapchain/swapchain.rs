@@ -10,6 +10,7 @@
 use std::error;
 use std::fmt;
 use std::mem::MaybeUninit;
+use std::mem;
 use std::ptr;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -189,6 +190,7 @@ pub struct Swapchain<W> {
     transform: SurfaceTransform,
     alpha: CompositeAlpha,
     mode: PresentMode,
+    fullscreen_exclusive: bool,
     clipped: bool,
 }
 
@@ -225,8 +227,8 @@ impl <W> Swapchain<W> {
     pub fn new<F, S>(
         device: Arc<Device>, surface: Arc<Surface<W>>, num_images: u32, format: F,
         dimensions: [u32; 2], layers: u32, usage: ImageUsage, sharing: S,
-        transform: SurfaceTransform, alpha: CompositeAlpha, mode: PresentMode, clipped: bool,
-        color_space: ColorSpace)
+        transform: SurfaceTransform, alpha: CompositeAlpha, mode: PresentMode,
+        fullscreen_exclusive: bool, clipped: bool, color_space: ColorSpace)
         -> Result<(Arc<Swapchain<W>>, Vec<Arc<SwapchainImage<W>>>), SwapchainCreationError>
         where F: FormatDesc,
               S: Into<SharingMode>
@@ -243,6 +245,7 @@ impl <W> Swapchain<W> {
                              transform,
                              alpha,
                              mode,
+                             fullscreen_exclusive,
                              clipped,
                              None)
     }
@@ -253,8 +256,9 @@ impl <W> Swapchain<W> {
     pub fn with_old_swapchain<F, S>(
         device: Arc<Device>, surface: Arc<Surface<W>>, num_images: u32, format: F,
         dimensions: [u32; 2], layers: u32, usage: ImageUsage, sharing: S,
-        transform: SurfaceTransform, alpha: CompositeAlpha, mode: PresentMode, clipped: bool,
-        color_space: ColorSpace, old_swapchain: Arc<Swapchain<W>>)
+        transform: SurfaceTransform, alpha: CompositeAlpha, mode: PresentMode,
+        fullscreen_exclusive: bool, clipped: bool, color_space: ColorSpace,
+        old_swapchain: Arc<Swapchain<W>>)
         -> Result<(Arc<Swapchain<W>>, Vec<Arc<SwapchainImage<W>>>), SwapchainCreationError>
         where F: FormatDesc,
               S: Into<SharingMode>
@@ -271,6 +275,7 @@ impl <W> Swapchain<W> {
                              transform,
                              alpha,
                              mode,
+                             fullscreen_exclusive,
                              clipped,
                              Some(&*old_swapchain))
     }
@@ -290,6 +295,7 @@ impl <W> Swapchain<W> {
                              self.transform,
                              self.alpha,
                              self.mode,
+                             self.fullscreen_exclusive,
                              self.clipped,
                              Some(self))
     }
@@ -310,6 +316,7 @@ impl <W> Swapchain<W> {
                              self.transform,
                              self.alpha,
                              self.mode,
+                             self.fullscreen_exclusive,
                              self.clipped,
                              Some(self))
     }
@@ -317,7 +324,7 @@ impl <W> Swapchain<W> {
     fn new_inner(device: Arc<Device>, surface: Arc<Surface<W>>, num_images: u32, format: Format,
                  color_space: ColorSpace, dimensions: Option<[u32; 2]>, layers: u32, usage: ImageUsage,
                  sharing: SharingMode, transform: SurfaceTransform, alpha: CompositeAlpha,
-                 mode: PresentMode, clipped: bool, old_swapchain: Option<&Swapchain<W>>)
+                 mode: PresentMode, fullscreen_exclusive: bool, clipped: bool, old_swapchain: Option<&Swapchain<W>>)
                  -> Result<(Arc<Swapchain<W>>, Vec<Arc<SwapchainImage<W>>>), SwapchainCreationError> {
         assert_eq!(device.instance().internal_object(),
                    surface.instance().internal_object());
@@ -390,8 +397,27 @@ impl <W> Swapchain<W> {
         }
 
         if !device.loaded_extensions().khr_swapchain {
-            return Err(SwapchainCreationError::MissingExtension);
+            return Err(SwapchainCreationError::MissingExtensionKHRSwapchain);
         }
+
+        let surface_full_screen_exclusive_info = if fullscreen_exclusive {
+             if !surface.instance().loaded_extensions().ext_full_screen_exclusive {
+                return Err(SwapchainCreationError::MissingExtensionExtFullScreenExclusive);
+            } else {
+                Some(vk::SurfaceFullScreenExclusiveInfoEXT {
+                    sType: vk::STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT,
+                    pNext: ptr::null(),
+                    fullScreenExclusive: vk::FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT
+                })
+            }
+        } else {
+            None
+        };
+
+        let p_next = match surface_full_screen_exclusive_info.as_ref() {
+            Some(some) => unsafe { mem::transmute(some as *const _) },
+            None => ptr::null(),
+        };
 
         // Required by the specs.
         assert_ne!(usage, ImageUsage::none());
@@ -426,7 +452,7 @@ impl <W> Swapchain<W> {
 
             let infos = vk::SwapchainCreateInfoKHR {
                 sType: vk::STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-                pNext: ptr::null(),
+                pNext: p_next,
                 flags: 0, // reserved
                 surface: surface.internal_object(),
                 minImageCount: num_images,
@@ -517,6 +543,7 @@ impl <W> Swapchain<W> {
                                      transform: transform,
                                      alpha: alpha,
                                      mode: mode,
+                                     fullscreen_exclusive,
                                      clipped: clipped,
                                  });
 
@@ -682,7 +709,9 @@ pub enum SwapchainCreationError {
     /// The window is already in use by another API.
     NativeWindowInUse,
     /// The `VK_KHR_swapchain` extension was not enabled.
-    MissingExtension,
+    MissingExtensionKHRSwapchain,
+    /// The `VK_EXT_full_screen_exclusive` extension was not enabled.
+    MissingExtensionExtFullScreenExclusive,
     /// Surface mismatch between old and new swapchain.
     OldSwapchainSurfaceMismatch,
     /// The old swapchain has already been used to recreate another one.
@@ -726,8 +755,11 @@ impl error::Error for SwapchainCreationError {
             SwapchainCreationError::NativeWindowInUse => {
                 "the window is already in use by another API"
             },
-            SwapchainCreationError::MissingExtension => {
+            SwapchainCreationError::MissingExtensionKHRSwapchain => {
                 "the `VK_KHR_swapchain` extension was not enabled"
+            },
+            SwapchainCreationError::MissingExtensionExtFullScreenExclusive => {
+                "the `VK_EXT_full_screen_exclusive` extension was not enabled"
             },
             SwapchainCreationError::OldSwapchainSurfaceMismatch => {
                 "surface mismatch between old and new swapchain"
