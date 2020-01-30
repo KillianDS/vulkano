@@ -7,14 +7,13 @@
 // notice may not be copied, modified, or distributed except
 // according to those terms.
 
-// Welcome to the triangle example!
+// Welcome to the fullscreen example!
 //
-// This is the only example that is entirely detailed. All the other examples avoid code
-// duplication by using helper functions.
-//
-// This example assumes that you are already more or less familiar with graphics programming
-// and that you want to learn Vulkan. This means that for example it won't go into details about
-// what a vertex or a shader is.
+// This example is based on the triangle example and will show the basics of
+// full screen rendering and how to acquire/release exclusive full screen mode.
+// In exclusive full screen mode your application takes ownership of the display,
+// allowing for multiple optimizations by bypassing most of the compositor (windowing)
+// system. This does mean we need to release and re-acquire exclusive mode when focus is lost.
 
 use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
 use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState};
@@ -46,9 +45,14 @@ fn main() {
     let physical = PhysicalDevice::enumerate(&instance).next().unwrap();
     println!("Using device: {} (type: {:?})", physical.name(), physical.ty());
     let event_loop = EventLoop::new();
-    let surface = WindowBuilder::new().build_vk_surface(&event_loop, instance.clone()).unwrap();
-    //We keep a fullscreen mutable to toggle fullscreen
-    let mut fullscreen = false;
+    //We keep a fullscreen mutable to toggle fullscreen. The initial state can be changed here also, the code can handle both.
+    let mut fullscreen = true;
+    let surface = if fullscreen {
+        let mode = event_loop.available_monitors().next().unwrap().video_modes().max_by_key(|mode|(mode.bit_depth(),mode.size().width*mode.size().height,mode.refresh_rate())).unwrap();    
+        WindowBuilder::new().with_fullscreen(Some(Fullscreen::Exclusive(mode))).build_vk_surface(&event_loop, instance.clone()).unwrap()
+    } else {
+        WindowBuilder::new().build_vk_surface(&event_loop, instance.clone()).unwrap()
+    };
     
     let queue_family = physical.queue_families().find(|&q| {
         // We take the first queue that supports drawing to our window.
@@ -68,11 +72,16 @@ fn main() {
         let dimensions: [u32; 2] = surface.window().inner_size().into();
         // Using min_image_count in fullscreen mode fails on some devices, always try to add one:
         let image_count = caps.max_image_count.unwrap_or(u32::max_value()).min(caps.min_image_count+1);
+        // Swapchain is created with an ExplicitAcquire for full screen exclusive mode. This allows us to 
+        // give up on fullscreen when we go windowed and vice versa.
+        // For simple full-screen only applications, using ExplicitAcquire::Allowed should be good enough.
         Swapchain::new(device.clone(), surface.clone(), image_count, format,
             dimensions, 1, usage, &queue, SurfaceTransform::Identity, alpha,
             PresentMode::Fifo, Some(FullscreenExclusive::ExplicitAcquire), true, ColorSpace::SrgbNonLinear).unwrap()
-
     };
+    if fullscreen {
+        swapchain.acquire_full_screen_exclusive_mode().unwrap();
+    }
     let vertex_buffer = {
         #[derive(Default, Debug, Clone)]
         struct Vertex { position: [f32; 2] }
@@ -147,11 +156,26 @@ fn main() {
     let mut dynamic_state = DynamicState { line_width: None, viewports: None, scissors: None, compare_mask: None, write_mask: None, reference: None };
     let mut framebuffers = window_size_dependent_setup(&images, render_pass.clone(), &mut dynamic_state);
     let mut recreate_swapchain = false;
+    let mut focussed = true;
     let mut previous_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
                 *control_flow = ControlFlow::Exit;
+            },
+            Event::WindowEvent { event: WindowEvent::Focused(focus), .. } => {
+                focussed = focus;
+                //When losing focus (e.g. alt-tab) we release full_screen exclusive, when regaining focus
+                // we always recreate the swapchain to be safe.
+                if focus {
+                    surface.window().set_minimized(false);
+                    recreate_swapchain = true;
+                } else {
+                    if fullscreen {
+                        swapchain.release_full_screen_exclusive_mode().unwrap();
+                        surface.window().set_minimized(true);
+                    }
+                }
             },
             Event::WindowEvent { event: WindowEvent::Resized(_), .. } => {
                 recreate_swapchain = true;
@@ -170,9 +194,14 @@ fn main() {
                 }
             },
             Event::RedrawEventsCleared => {
+                // If we lost focus while fullscreen we can't draw (viewport = 0,0)
+                if fullscreen && !focussed { return; }
                 previous_frame_end.as_mut().unwrap().cleanup_finished();
 
                 if recreate_swapchain {
+                    // We keep a boolean to check if we need to acquire exclusive full screen after toggling to mode.
+                    // Not all drivers will succeed toggling acquire on a swapchain linked to a windowed surface, so this 
+                    // has to be called after recreating the swapchain.
                     let mut acquire_fullscreen = false;
                     match surface.window().fullscreen() {
                         None => {
@@ -187,6 +216,8 @@ fn main() {
                         Some(_) => {
                             if !fullscreen {
                                 surface.window().set_fullscreen(None);
+                                //we should already release exclusive mode on the 'fullscreen' swapchain, otherwise the windowed
+                                // swapchain might inherit it initially, which is suboptimal and may lead to issues.
                                 swapchain.release_full_screen_exclusive_mode().unwrap();
                             }
                         },
@@ -200,6 +231,7 @@ fn main() {
 
                     swapchain = new_swapchain;
                     if acquire_fullscreen {
+                        //Now that the swapchain for fullscreen is created, acquire exclusive mode.
                         swapchain.acquire_full_screen_exclusive_mode().unwrap();
                     }
                     framebuffers = window_size_dependent_setup(&new_images, render_pass.clone(), &mut dynamic_state);
