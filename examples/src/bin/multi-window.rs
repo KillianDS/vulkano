@@ -86,7 +86,7 @@ fn main() {
 
         Swapchain::new(device.clone(), surface.clone(), surface_caps.min_image_count, format,
             dimensions, 1, usage, &queue, SurfaceTransform::Identity, alpha,
-            PresentMode::Fifo, true, ColorSpace::SrgbNonLinear).unwrap()
+            PresentMode::Fifo, None, true, ColorSpace::SrgbNonLinear).unwrap()
     };
 
     let vertex_buffer = {
@@ -189,7 +189,7 @@ fn main() {
 
                     Swapchain::new(device.clone(), surface.clone(), surface_caps.min_image_count, format,
                         dimensions, 1, usage, &queue, SurfaceTransform::Identity, alpha,
-                        PresentMode::Fifo, true, ColorSpace::SrgbNonLinear).unwrap()
+                        PresentMode::Fifo, None, true, ColorSpace::SrgbNonLinear).unwrap()
                 };
 
                 window_surfaces.insert(window_id, WindowSurface {

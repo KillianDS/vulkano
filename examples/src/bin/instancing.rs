@@ -88,7 +88,7 @@ fn main() {
 
         Swapchain::new(device.clone(), surface.clone(), caps.min_image_count, format,
             dimensions, 1, usage, &queue, SurfaceTransform::Identity, alpha,
-            PresentMode::Fifo, true, ColorSpace::SrgbNonLinear).unwrap()
+            PresentMode::Fifo, None, true, ColorSpace::SrgbNonLinear).unwrap()
     };
 
     // We now create a buffer that will store the shape of our triangle.

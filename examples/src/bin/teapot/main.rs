@@ -71,7 +71,7 @@ fn main() {
         let alpha = caps.supported_composite_alpha.iter().next().unwrap();
 
         Swapchain::new(device.clone(), surface.clone(), caps.min_image_count, format, dimensions, 1,
-            usage, &queue, SurfaceTransform::Identity, alpha, PresentMode::Fifo, true, ColorSpace::SrgbNonLinear).unwrap()
+            usage, &queue, SurfaceTransform::Identity, alpha, PresentMode::Fifo, None, true, ColorSpace::SrgbNonLinear).unwrap()
     };
 
     let vertices = VERTICES.iter().cloned();

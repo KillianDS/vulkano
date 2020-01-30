@@ -320,6 +320,7 @@ pub use self::swapchain::AcquireError;
 pub use self::swapchain::AcquiredImage;
 pub use self::swapchain::PresentFuture;
 pub use self::swapchain::Swapchain;
+pub use self::swapchain::FullscreenExclusive;
 pub use self::swapchain::SwapchainAcquireFuture;
 pub use self::swapchain::SwapchainCreationError;
 pub use self::swapchain::acquire_next_image;

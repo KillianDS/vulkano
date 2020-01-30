@@ -88,7 +88,7 @@ fn main() {
         let dimensions: [u32; 2] = surface.window().inner_size().into();
 
         Swapchain::new(device.clone(), surface.clone(), caps.min_image_count, format, dimensions,
-            1, usage, &queue, SurfaceTransform::Identity, alpha, PresentMode::Fifo, true, ColorSpace::SrgbNonLinear).unwrap()
+            1, usage, &queue, SurfaceTransform::Identity, alpha, PresentMode::Fifo, None, true, ColorSpace::SrgbNonLinear).unwrap()
     };
 
     let render_pass = Arc::new(vulkano::single_pass_renderpass!(

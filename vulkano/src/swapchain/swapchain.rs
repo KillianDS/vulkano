@@ -190,7 +190,7 @@ pub struct Swapchain<W> {
     transform: SurfaceTransform,
     alpha: CompositeAlpha,
     mode: PresentMode,
-    fullscreen_exclusive: bool,
+    full_screen_exclusive: Option<(FullscreenExclusive,bool)>,
     clipped: bool,
 }
 
@@ -199,6 +199,14 @@ struct ImageEntry {
     image: UnsafeImage,
     // If true, then the image is still in the undefined layout and must be transitioned.
     undefined_layout: AtomicBool,
+}
+
+#[derive(Clone)]
+pub enum FullscreenExclusive {
+    Default,
+    Allowed,
+    Disallowed,
+    ExplicitAcquire,
 }
 
 impl <W> Swapchain<W> {
@@ -228,7 +236,7 @@ impl <W> Swapchain<W> {
         device: Arc<Device>, surface: Arc<Surface<W>>, num_images: u32, format: F,
         dimensions: [u32; 2], layers: u32, usage: ImageUsage, sharing: S,
         transform: SurfaceTransform, alpha: CompositeAlpha, mode: PresentMode,
-        fullscreen_exclusive: bool, clipped: bool, color_space: ColorSpace)
+        full_screen_exclusive: Option<FullscreenExclusive>, clipped: bool, color_space: ColorSpace)
         -> Result<(Arc<Swapchain<W>>, Vec<Arc<SwapchainImage<W>>>), SwapchainCreationError>
         where F: FormatDesc,
               S: Into<SharingMode>
@@ -245,7 +253,7 @@ impl <W> Swapchain<W> {
                              transform,
                              alpha,
                              mode,
-                             fullscreen_exclusive,
+                             full_screen_exclusive,
                              clipped,
                              None)
     }
@@ -257,7 +265,7 @@ impl <W> Swapchain<W> {
         device: Arc<Device>, surface: Arc<Surface<W>>, num_images: u32, format: F,
         dimensions: [u32; 2], layers: u32, usage: ImageUsage, sharing: S,
         transform: SurfaceTransform, alpha: CompositeAlpha, mode: PresentMode,
-        fullscreen_exclusive: bool, clipped: bool, color_space: ColorSpace,
+        full_screen_exclusive: Option<FullscreenExclusive>, clipped: bool, color_space: ColorSpace,
         old_swapchain: Arc<Swapchain<W>>)
         -> Result<(Arc<Swapchain<W>>, Vec<Arc<SwapchainImage<W>>>), SwapchainCreationError>
         where F: FormatDesc,
@@ -275,7 +283,7 @@ impl <W> Swapchain<W> {
                              transform,
                              alpha,
                              mode,
-                             fullscreen_exclusive,
+                             full_screen_exclusive,
                              clipped,
                              Some(&*old_swapchain))
     }
@@ -295,7 +303,7 @@ impl <W> Swapchain<W> {
                              self.transform,
                              self.alpha,
                              self.mode,
-                             self.fullscreen_exclusive,
+                             self.full_screen_exclusive.clone().map(|(x,_)|x),
                              self.clipped,
                              Some(self))
     }
@@ -316,7 +324,7 @@ impl <W> Swapchain<W> {
                              self.transform,
                              self.alpha,
                              self.mode,
-                             self.fullscreen_exclusive,
+                             self.full_screen_exclusive.clone().map(|(x,_)|x),
                              self.clipped,
                              Some(self))
     }
@@ -324,7 +332,7 @@ impl <W> Swapchain<W> {
     fn new_inner(device: Arc<Device>, surface: Arc<Surface<W>>, num_images: u32, format: Format,
                  color_space: ColorSpace, dimensions: Option<[u32; 2]>, layers: u32, usage: ImageUsage,
                  sharing: SharingMode, transform: SurfaceTransform, alpha: CompositeAlpha,
-                 mode: PresentMode, fullscreen_exclusive: bool, clipped: bool, old_swapchain: Option<&Swapchain<W>>)
+                 mode: PresentMode, full_screen_exclusive: Option<FullscreenExclusive>, clipped: bool, old_swapchain: Option<&Swapchain<W>>)
                  -> Result<(Arc<Swapchain<W>>, Vec<Arc<SwapchainImage<W>>>), SwapchainCreationError> {
         assert_eq!(device.instance().internal_object(),
                    surface.instance().internal_object());
@@ -400,35 +408,33 @@ impl <W> Swapchain<W> {
             return Err(SwapchainCreationError::MissingExtensionKHRSwapchain);
         }
 
-        let mut surface_full_screen_exclusive_info = None;
-        let mut full_screen_exclusive_acquire = false;
-        let mut full_screen_exclusive_release = false;
-
-        if device.loaded_extensions().ext_full_screen_exclusive
-            && surface.instance().loaded_extensions().khr_get_physical_device_properties2
-            && surface.instance().loaded_extensions().khr_get_surface_capabilities2
-        {
-            if fullscreen_exclusive {
-                if old_swapchain.as_ref().map(|v| v.fullscreen_exclusive).unwrap_or(false) {
-                    full_screen_exclusive_acquire = true;
+        let surface_full_screen_exclusive_info = match full_screen_exclusive.clone() {
+            Some(full_screen_exclusive_method) => {
+                if !device.loaded_extensions().ext_full_screen_exclusive {
+                    return Err(SwapchainCreationError::MissingExtensionExtFullScreenExclusive);
                 }
-            } else {
-                if old_swapchain.as_ref().map(|v| v.fullscreen_exclusive).unwrap_or(true) {
-                    full_screen_exclusive_release = true;
+                if !surface.instance().loaded_extensions().khr_get_physical_device_properties2 {
+                    return Err(SwapchainCreationError::MissingExtensionExtGetPhysicalDeviceProperties2);
                 }
-            }
-
-            surface_full_screen_exclusive_info = Some(vk::SurfaceFullScreenExclusiveInfoEXT {
-                sType: vk::STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT,
-                pNext: ptr::null(),
-                fullScreenExclusive: vk::FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT
-            });
-        } else if fullscreen_exclusive {
-            return Err(SwapchainCreationError::MissingExtensionExtFullScreenExclusive);
-        }
-
+                if !surface.instance().loaded_extensions().khr_get_surface_capabilities2 {
+                    return Err(SwapchainCreationError::MissingExtensionExtGetSurfaceCapabilities2);
+                }
+                Some(vk::SurfaceFullScreenExclusiveInfoEXT {
+                    sType: vk::STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT,
+                    pNext: ptr::null(),
+                    fullScreenExclusive: match full_screen_exclusive_method {
+                        FullscreenExclusive::Default => vk::FULL_SCREEN_EXCLUSIVE_DEFAUlT_EXT,
+                        FullscreenExclusive::Allowed => vk::FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT,
+                        FullscreenExclusive::Disallowed => vk::FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT,
+                        FullscreenExclusive::ExplicitAcquire => vk::FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT
+                    }
+                })
+            },
+            None => None,            
+        };
+        //surface_full_screen_exclusive_info should live long enough (i.e. until after swapchain creation)
         let p_next = match surface_full_screen_exclusive_info.as_ref() {
-            Some(some) => unsafe { mem::transmute(some as *const _) },
+            Some(info) => unsafe {mem::transmute(info as *const _) },
             None => ptr::null(),
         };
 
@@ -499,16 +505,6 @@ impl <W> Swapchain<W> {
             output.assume_init()
         };
 
-        unsafe {
-            if full_screen_exclusive_acquire {
-                 check_errors(vk.AcquireFullScreenExclusiveModeEXT(device.internal_object(), swapchain))?;
-            }
-
-            if full_screen_exclusive_release {
-                check_errors(vk.ReleaseFullScreenExclusiveModeEXT(device.internal_object(), swapchain))?;
-            }
-        }
-
         let image_handles = unsafe {
             let mut num = 0;
             check_errors(vk.GetSwapchainImagesKHR(device.internal_object(),
@@ -566,7 +562,7 @@ impl <W> Swapchain<W> {
                                      transform: transform,
                                      alpha: alpha,
                                      mode: mode,
-                                     fullscreen_exclusive,
+                                     full_screen_exclusive: full_screen_exclusive.map(|x|(x,false)),
                                      clipped: clipped,
                                  });
 
@@ -579,6 +575,38 @@ impl <W> Swapchain<W> {
         };
 
         Ok((swapchain, swapchain_images))
+    }
+
+    //Tries to acquire exclusive fullscreen access
+    pub fn acquire_full_screen_exclusive_mode(&mut self) -> Result<(),FullScreenExclusiveError> {
+        match self.full_screen_exclusive.as_ref() {
+            Some((FullscreenExclusive::ExplicitAcquire, false)) => {
+                unsafe {
+                    check_errors(self.device.pointers().AcquireFullScreenExclusiveModeEXT(self.device.internal_object(), self.swapchain))?;
+                }
+                self.full_screen_exclusive = Some((FullscreenExclusive::ExplicitAcquire, true));
+                Ok(())
+            },
+            Some((FullscreenExclusive::ExplicitAcquire, true)) => Err(FullScreenExclusiveError::AlreadyAcquired),
+            Some(_) => Err(FullScreenExclusiveError::NotApplicationControlled),
+            None => Err(FullScreenExclusiveError::NotEnabled),
+        }
+    }
+    
+    //Releases exclusive fullscreen access
+    pub fn release_full_screen_exclusive_mode(&mut self)  -> Result<(),FullScreenExclusiveError> {
+        match self.full_screen_exclusive.as_ref() {
+            Some((FullscreenExclusive::ExplicitAcquire, true)) => {
+                unsafe {
+                    check_errors(self.device.pointers().ReleaseFullScreenExclusiveModeEXT(self.device.internal_object(), self.swapchain))?;
+                }
+                self.full_screen_exclusive = Some((FullscreenExclusive::ExplicitAcquire, false));
+                Ok(())
+            },
+            Some((FullscreenExclusive::ExplicitAcquire, false)) => Ok(()),
+            Some(_) => Err(FullScreenExclusiveError::NotApplicationControlled),
+            None => Err(FullScreenExclusiveError::NotEnabled),
+        }
     }
 
 	/// Returns the saved Surface, from the Swapchain creation
@@ -735,6 +763,10 @@ pub enum SwapchainCreationError {
     MissingExtensionKHRSwapchain,
     /// The `VK_EXT_full_screen_exclusive` extension was not enabled.
     MissingExtensionExtFullScreenExclusive,
+    /// The `VK_KHR_get_surface_capabilities2` extension was not enabled.
+    MissingExtensionExtGetSurfaceCapabilities2,
+    /// The `VK_KHR_get_physical_device_properties2` extension was not enabled.
+    MissingExtensionExtGetPhysicalDeviceProperties2,
     /// Surface mismatch between old and new swapchain.
     OldSwapchainSurfaceMismatch,
     /// The old swapchain has already been used to recreate another one.
@@ -783,6 +815,12 @@ impl error::Error for SwapchainCreationError {
             },
             SwapchainCreationError::MissingExtensionExtFullScreenExclusive => {
                 "the `VK_EXT_full_screen_exclusive` extension was not enabled"
+            },
+            SwapchainCreationError::MissingExtensionExtGetSurfaceCapabilities2 => {
+                "The `VK_KHR_get_surface_capabilities2` extension was not enabled."
+            },
+            SwapchainCreationError::MissingExtensionExtGetPhysicalDeviceProperties2 => {
+                "The `VK_KHR_get_physical_device_properties2` extension was not enabled."
             },
             SwapchainCreationError::OldSwapchainSurfaceMismatch => {
                 "surface mismatch between old and new swapchain"
@@ -1060,6 +1098,73 @@ impl From<Error> for AcquireError {
             Error::DeviceLost => AcquireError::DeviceLost,
             Error::SurfaceLost => AcquireError::SurfaceLost,
             Error::OutOfDate => AcquireError::OutOfDate,
+            _ => panic!("unexpected error: {:?}", err),
+        }
+    }
+}
+
+/// Error that can happen when calling `acquire_full_screen_exclusive_mode`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u32)]
+pub enum FullScreenExclusiveError {
+    /// Not enough memory.
+    OomError(OomError),
+    /// Explicit full screen mode extension is not enabled.
+    NotEnabled,
+    /// Explicit full screen mode is not application controled.
+    NotApplicationControlled,
+    /// Explicit full screen mode was already acquired.
+    AlreadyAcquired,
+    /// Could not acquire exclusive full screen mode.
+    Failed,
+    /// The surface of this swapchain is no longer valid
+    SurfaceLost,
+}
+
+impl error::Error for FullScreenExclusiveError {
+    #[inline]
+    fn description(&self) -> &str {
+        match *self {
+            FullScreenExclusiveError::OomError(_) => "not enough memory",
+            FullScreenExclusiveError::NotEnabled => "Explicit full screen mode extension is not enabled.",
+            FullScreenExclusiveError::NotApplicationControlled => "Explicit full screen mode is not application controled.",
+            FullScreenExclusiveError::AlreadyAcquired => "Explicit full screen mode was already acquired.",
+            FullScreenExclusiveError::Failed => "Could not acquire exclusive full screen mode.",
+            FullScreenExclusiveError::SurfaceLost => "The surface of this swapchain is no longer valid",
+        }
+    }
+
+    #[inline]
+    fn cause(&self) -> Option<&dyn error::Error> {
+        match *self {
+            FullScreenExclusiveError::OomError(ref err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for FullScreenExclusiveError {
+    #[inline]
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "{}", error::Error::description(self))
+    }
+}
+
+impl From<OomError> for FullScreenExclusiveError {
+    #[inline]
+    fn from(err: OomError) -> FullScreenExclusiveError {
+        FullScreenExclusiveError::OomError(err)
+    }
+}
+
+impl From<Error> for FullScreenExclusiveError {
+    #[inline]
+    fn from(err: Error) -> FullScreenExclusiveError {
+        match err {
+            err @ Error::OutOfHostMemory => FullScreenExclusiveError::OomError(OomError::from(err)),
+            err @ Error::OutOfDeviceMemory => FullScreenExclusiveError::OomError(OomError::from(err)),
+            Error::InitializationFailed => FullScreenExclusiveError::Failed,
+            Error::SurfaceLost => FullScreenExclusiveError::SurfaceLost,
             _ => panic!("unexpected error: {:?}", err),
         }
     }
