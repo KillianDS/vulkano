@@ -190,7 +190,8 @@ pub struct Swapchain<W> {
     transform: SurfaceTransform,
     alpha: CompositeAlpha,
     mode: PresentMode,
-    full_screen_exclusive: Option<(FullscreenExclusive,bool)>,
+    full_screen_exclusive: Option<FullscreenExclusive>,
+    full_screen_acquired: Mutex<bool>,
     clipped: bool,
 }
 
@@ -303,7 +304,7 @@ impl <W> Swapchain<W> {
                              self.transform,
                              self.alpha,
                              self.mode,
-                             self.full_screen_exclusive.clone().map(|(x,_)|x),
+                             self.full_screen_exclusive.clone(),
                              self.clipped,
                              Some(self))
     }
@@ -324,7 +325,7 @@ impl <W> Swapchain<W> {
                              self.transform,
                              self.alpha,
                              self.mode,
-                             self.full_screen_exclusive.clone().map(|(x,_)|x),
+                             self.full_screen_exclusive.clone(),
                              self.clipped,
                              Some(self))
     }
@@ -562,7 +563,8 @@ impl <W> Swapchain<W> {
                                      transform: transform,
                                      alpha: alpha,
                                      mode: mode,
-                                     full_screen_exclusive: full_screen_exclusive.map(|x|(x,false)),
+                                     full_screen_exclusive: full_screen_exclusive,
+                                     full_screen_acquired: Mutex::new(false),
                                      clipped: clipped,
                                  });
 
@@ -578,32 +580,38 @@ impl <W> Swapchain<W> {
     }
 
     //Tries to acquire exclusive fullscreen access
-    pub fn acquire_full_screen_exclusive_mode(&mut self) -> Result<(),FullScreenExclusiveError> {
+    pub fn acquire_full_screen_exclusive_mode(&self) -> Result<(),FullScreenExclusiveError> {
         match self.full_screen_exclusive.as_ref() {
-            Some((FullscreenExclusive::ExplicitAcquire, false)) => {
-                unsafe {
-                    check_errors(self.device.pointers().AcquireFullScreenExclusiveModeEXT(self.device.internal_object(), self.swapchain))?;
+            Some(FullscreenExclusive::ExplicitAcquire) => {
+                let mut acquired = self.full_screen_acquired.lock().unwrap();
+                if *acquired {
+                    Err(FullScreenExclusiveError::AlreadyAcquired)
+                } else {
+                    unsafe {
+                        check_errors(self.device.pointers().AcquireFullScreenExclusiveModeEXT(self.device.internal_object(), self.swapchain))?;
+                    }
+                    *acquired = true;
+                    Ok(())
                 }
-                self.full_screen_exclusive = Some((FullscreenExclusive::ExplicitAcquire, true));
-                Ok(())
             },
-            Some((FullscreenExclusive::ExplicitAcquire, true)) => Err(FullScreenExclusiveError::AlreadyAcquired),
             Some(_) => Err(FullScreenExclusiveError::NotApplicationControlled),
             None => Err(FullScreenExclusiveError::NotEnabled),
         }
     }
     
     //Releases exclusive fullscreen access
-    pub fn release_full_screen_exclusive_mode(&mut self)  -> Result<(),FullScreenExclusiveError> {
+    pub fn release_full_screen_exclusive_mode(&self)  -> Result<(),FullScreenExclusiveError> {
         match self.full_screen_exclusive.as_ref() {
-            Some((FullscreenExclusive::ExplicitAcquire, true)) => {
-                unsafe {
-                    check_errors(self.device.pointers().ReleaseFullScreenExclusiveModeEXT(self.device.internal_object(), self.swapchain))?;
+            Some(FullscreenExclusive::ExplicitAcquire) => {
+                let mut acquired = self.full_screen_acquired.lock().unwrap();
+                if *acquired {
+                    unsafe {
+                        check_errors(self.device.pointers().ReleaseFullScreenExclusiveModeEXT(self.device.internal_object(), self.swapchain))?;
+                    }
+                    *acquired = false;
                 }
-                self.full_screen_exclusive = Some((FullscreenExclusive::ExplicitAcquire, false));
                 Ok(())
             },
-            Some((FullscreenExclusive::ExplicitAcquire, false)) => Ok(()),
             Some(_) => Err(FullScreenExclusiveError::NotApplicationControlled),
             None => Err(FullScreenExclusiveError::NotEnabled),
         }

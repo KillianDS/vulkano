@@ -38,6 +38,7 @@ use winit::event::{Event, WindowEvent, DeviceEvent, KeyboardInput, VirtualKeyCod
 use std::sync::Arc;
 
 fn main() {
+    // Push F to toggle, escape to quit
     // The start of this example is exactly the same as `triangle`. You should read the
     // `triangle` example if you haven't done so yet.
     let required_extensions = vulkano_win::required_extensions();
@@ -45,9 +46,9 @@ fn main() {
     let physical = PhysicalDevice::enumerate(&instance).next().unwrap();
     println!("Using device: {} (type: {:?})", physical.name(), physical.ty());
     let event_loop = EventLoop::new();
-    //We build a fullscreen window:
-    let mode = event_loop.available_monitors().next().unwrap().video_modes().max_by_key(|mode|(mode.bit_depth(),mode.size().width*mode.size().height,mode.refresh_rate())).unwrap();    
-    let surface = WindowBuilder::new().with_fullscreen(Some(Fullscreen::Exclusive(mode))).build_vk_surface(&event_loop, instance.clone()).unwrap();
+    let surface = WindowBuilder::new().build_vk_surface(&event_loop, instance.clone()).unwrap();
+    //We keep a fullscreen mutable to toggle fullscreen
+    let mut fullscreen = false;
     
     let queue_family = physical.queue_families().find(|&q| {
         // We take the first queue that supports drawing to our window.
@@ -69,7 +70,7 @@ fn main() {
         let image_count = caps.max_image_count.unwrap_or(u32::max_value()).min(caps.min_image_count+1);
         Swapchain::new(device.clone(), surface.clone(), image_count, format,
             dimensions, 1, usage, &queue, SurfaceTransform::Identity, alpha,
-            PresentMode::Fifo, Some(FullscreenExclusive::Allowed), true, ColorSpace::SrgbNonLinear).unwrap()
+            PresentMode::Fifo, Some(FullscreenExclusive::ExplicitAcquire), true, ColorSpace::SrgbNonLinear).unwrap()
 
     };
     let vertex_buffer = {
@@ -160,7 +161,11 @@ fn main() {
                 match key {
                     KeyboardInput{state: ElementState::Released, virtual_keycode: Some(VirtualKeyCode::Escape), .. } => {
                         *control_flow = ControlFlow::Exit;
-                    }
+                    },
+                    KeyboardInput{state: ElementState::Released, virtual_keycode: Some(VirtualKeyCode::F), .. } => {
+                        recreate_swapchain = true;
+                        fullscreen = !fullscreen;
+                    },
                     _ => {}
                 }
             },
@@ -168,6 +173,24 @@ fn main() {
                 previous_frame_end.as_mut().unwrap().cleanup_finished();
 
                 if recreate_swapchain {
+                    let mut acquire_fullscreen = false;
+                    match surface.window().fullscreen() {
+                        None => {
+                            if fullscreen {
+                                let monitor = surface.window().current_monitor();
+                                // Find 'best' video mode: first by bit depth, then most pixels, then highest refresh rate
+                                let mode = monitor.video_modes().max_by_key(|mode|(mode.bit_depth(),mode.size().width*mode.size().height,mode.refresh_rate())).unwrap();
+                                surface.window().set_fullscreen(Some(Fullscreen::Exclusive(mode)));
+                                acquire_fullscreen = true;
+                            }
+                        },
+                        Some(_) => {
+                            if !fullscreen {
+                                surface.window().set_fullscreen(None);
+                                swapchain.release_full_screen_exclusive_mode().unwrap();
+                            }
+                        },
+                    }
                     let dimensions: [u32; 2] = surface.window().inner_size().into();
                     let (new_swapchain, new_images) = match swapchain.recreate_with_dimension(dimensions) {
                         Ok(r) => r,
@@ -176,6 +199,9 @@ fn main() {
                     };
 
                     swapchain = new_swapchain;
+                    if acquire_fullscreen {
+                        swapchain.acquire_full_screen_exclusive_mode().unwrap();
+                    }
                     framebuffers = window_size_dependent_setup(&new_images, render_pass.clone(), &mut dynamic_state);
                     recreate_swapchain = false;
                 }
