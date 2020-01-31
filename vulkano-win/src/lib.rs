@@ -4,7 +4,6 @@ use std::borrow::Borrow;
 use std::error;
 use std::fmt;
 #[cfg(target_os = "windows")]
-use std::ptr;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -172,7 +171,7 @@ unsafe fn winit_to_surface<W: SafeBorrow<Window>>(
 
     Surface::from_hwnd(
         instance,
-        ptr::null() as *const (), // FIXME
+        win.borrow().hinstance(),
         win.borrow().hwnd(),
         win,
     )
