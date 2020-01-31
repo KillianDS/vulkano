@@ -9,7 +9,6 @@
 
 use smallvec::SmallVec;
 use std::error;
-use std::fmt;
 use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::Arc;
@@ -332,44 +331,10 @@ impl<D> Drop for Fence<D>
     }
 }
 
-/// Error that can be returned when waiting on a fence.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum FenceWaitError {
-    /// Not enough memory to complete the wait.
-    OomError(OomError),
-
-    /// The specified timeout wasn't long enough.
-    Timeout,
-
-    /// The device has been lost.
-    DeviceLostError,
-}
-
-impl error::Error for FenceWaitError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            FenceWaitError::OomError(_) => "no memory available",
-            FenceWaitError::Timeout => "the timeout has been reached",
-            FenceWaitError::DeviceLostError => "the device was lost",
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
-            FenceWaitError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for FenceWaitError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error_oom!(FenceWaitError {
+    Timeout: "the timeout has been reached",
+    DeviceLostError: "the device was lost"
+});
 
 impl From<Error> for FenceWaitError {
     #[inline]

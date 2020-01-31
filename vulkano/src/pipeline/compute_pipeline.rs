@@ -306,18 +306,7 @@ pub enum ComputePipelineCreationError {
 
 impl error::Error for ComputePipelineCreationError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            ComputePipelineCreationError::OomError(_) => "not enough memory available",
-            ComputePipelineCreationError::PipelineLayoutCreationError(_) =>
-                "error while creating the pipeline layout object",
-            ComputePipelineCreationError::IncompatiblePipelineLayout(_) =>
-                "the pipeline layout is not compatible with what the shader expects",
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
             ComputePipelineCreationError::OomError(ref err) => Some(err),
             ComputePipelineCreationError::PipelineLayoutCreationError(ref err) => Some(err),
@@ -329,7 +318,13 @@ impl error::Error for ComputePipelineCreationError {
 impl fmt::Display for ComputePipelineCreationError {
     #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        write!(fmt, "{}", match *self {
+            ComputePipelineCreationError::OomError(_) => "not enough memory available",
+            ComputePipelineCreationError::PipelineLayoutCreationError(_) =>
+                "error while creating the pipeline layout object",
+            ComputePipelineCreationError::IncompatiblePipelineLayout(_) =>
+                "the pipeline layout is not compatible with what the shader expects",
+        })
     }
 }
 

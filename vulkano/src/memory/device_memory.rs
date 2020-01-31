@@ -459,43 +459,12 @@ impl<'a, T: ?Sized + 'a> Drop for CpuAccess<'a, T> {
     }
 }
 
-/// Error type returned by functions related to `DeviceMemory`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DeviceMemoryAllocError {
-    /// Not enough memory available.
-    OomError(OomError),
-    /// The maximum number of allocations has been exceeded.
-    TooManyObjects,
-    /// Memory map failed.
-    MemoryMapFailed,
-}
-
-impl error::Error for DeviceMemoryAllocError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            DeviceMemoryAllocError::OomError(_) => "not enough memory available",
-            DeviceMemoryAllocError::TooManyObjects =>
-                "the maximum number of allocations has been exceeded",
-            DeviceMemoryAllocError::MemoryMapFailed => "memory map failed",
-        }
+simple_error_oom!(
+    DeviceMemoryAllocError {
+        TooManyObjects: "the maximum number of allocations has been exceeded",
+        MemoryMapFailed: "memory map failed"
     }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
-            DeviceMemoryAllocError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for DeviceMemoryAllocError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+);
 
 impl From<Error> for DeviceMemoryAllocError {
     #[inline]
@@ -507,13 +476,6 @@ impl From<Error> for DeviceMemoryAllocError {
             Error::MemoryMapFailed => DeviceMemoryAllocError::MemoryMapFailed,
             _ => panic!("unexpected error: {:?}", err),
         }
-    }
-}
-
-impl From<OomError> for DeviceMemoryAllocError {
-    #[inline]
-    fn from(err: OomError) -> DeviceMemoryAllocError {
-        DeviceMemoryAllocError::OomError(err)
     }
 }
 

@@ -9,7 +9,6 @@
 
 use smallvec::SmallVec;
 use std::cmp;
-use std::error;
 use std::fmt;
 use std::mem::MaybeUninit;
 use std::ops;
@@ -471,45 +470,12 @@ impl Drop for UnsafeDescriptorPool {
     }
 }
 
-/// Error that can be returned when creating a device.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DescriptorPoolAllocError {
-    /// There is no memory available on the host (ie. the CPU, RAM, etc.).
-    OutOfHostMemory,
-    /// There is no memory available on the device (ie. video memory).
-    OutOfDeviceMemory,
-    /// Allocation has failed because the pool is too fragmented.
-    FragmentedPool,
-    /// There is no more space available in the descriptor pool.
-    OutOfPoolMemory,
-}
-
-impl error::Error for DescriptorPoolAllocError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            DescriptorPoolAllocError::OutOfHostMemory => {
-                "no memory available on the host"
-            },
-            DescriptorPoolAllocError::OutOfDeviceMemory => {
-                "no memory available on the graphical device"
-            },
-            DescriptorPoolAllocError::FragmentedPool => {
-                "allocation has failed because the pool is too fragmented"
-            },
-            DescriptorPoolAllocError::OutOfPoolMemory => {
-                "there is no more space available in the descriptor pool"
-            },
-        }
-    }
-}
-
-impl fmt::Display for DescriptorPoolAllocError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error!(DescriptorPoolAllocError {
+    OutOfHostMemory: "no memory available on the host",
+    OutOfDeviceMemory: "no memory available on the graphical device",
+    FragmentedPool: "allocation has failed because the pool is too fragmented",
+    OutOfPoolMemory: "there is no more space available in the descriptor pool"
+});
 
 /// Iterator to the descriptor sets allocated from an unsafe descriptor pool.
 #[derive(Debug)]

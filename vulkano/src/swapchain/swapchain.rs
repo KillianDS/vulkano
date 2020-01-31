@@ -668,118 +668,24 @@ impl<W> Drop for Swapchain<W> {
     }
 }
 
-/// Error that can happen when creation a swapchain.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SwapchainCreationError {
-    /// Not enough memory.
-    OomError(OomError),
-    /// The device was lost.
-    DeviceLost,
-    /// The surface was lost.
-    SurfaceLost,
-    /// The surface is already used by another swapchain.
-    SurfaceInUse,
-    /// The window is already in use by another API.
-    NativeWindowInUse,
-    /// The `VK_KHR_swapchain` extension was not enabled.
-    MissingExtension,
-    /// Surface mismatch between old and new swapchain.
-    OldSwapchainSurfaceMismatch,
-    /// The old swapchain has already been used to recreate another one.
-    OldSwapchainAlreadyUsed,
-    /// The requested number of swapchain images is not supported by the surface.
-    UnsupportedMinImagesCount,
-    /// The requested number of swapchain images is not supported by the surface.
-    UnsupportedMaxImagesCount,
-    /// The requested image format is not supported by the surface.
-    UnsupportedFormat,
-    /// The requested dimensions are not supported by the surface.
-    UnsupportedDimensions,
-    /// The requested array layers count is not supported by the surface.
-    UnsupportedArrayLayers,
-    /// The requested image usage is not supported by the surface.
-    UnsupportedUsageFlags,
-    /// The requested surface transform is not supported by the surface.
-    UnsupportedSurfaceTransform,
-    /// The requested composite alpha is not supported by the surface.
-    UnsupportedCompositeAlpha,
-    /// The requested present mode is not supported by the surface.
-    UnsupportedPresentMode,
-}
-
-impl error::Error for SwapchainCreationError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            SwapchainCreationError::OomError(_) => {
-                "not enough memory available"
-            },
-            SwapchainCreationError::DeviceLost => {
-                "the device was lost"
-            },
-            SwapchainCreationError::SurfaceLost => {
-                "the surface was lost"
-            },
-            SwapchainCreationError::SurfaceInUse => {
-                "the surface is already used by another swapchain"
-            },
-            SwapchainCreationError::NativeWindowInUse => {
-                "the window is already in use by another API"
-            },
-            SwapchainCreationError::MissingExtension => {
-                "the `VK_KHR_swapchain` extension was not enabled"
-            },
-            SwapchainCreationError::OldSwapchainSurfaceMismatch => {
-                "surface mismatch between old and new swapchain"
-            },
-            SwapchainCreationError::OldSwapchainAlreadyUsed => {
-                "old swapchain has already been used to recreate a new one"
-            },
-            SwapchainCreationError::UnsupportedMinImagesCount => {
-                "the requested number of swapchain images is not supported by the surface"
-            },
-            SwapchainCreationError::UnsupportedMaxImagesCount => {
-                "the requested number of swapchain images is not supported by the surface"
-            },
-            SwapchainCreationError::UnsupportedFormat => {
-                "the requested image format is not supported by the surface"
-            },
-            SwapchainCreationError::UnsupportedDimensions => {
-                "the requested dimensions are not supported by the surface"
-            },
-            SwapchainCreationError::UnsupportedArrayLayers => {
-                "the requested array layers count is not supported by the surface"
-            },
-            SwapchainCreationError::UnsupportedUsageFlags => {
-                "the requested image usage is not supported by the surface"
-            },
-            SwapchainCreationError::UnsupportedSurfaceTransform => {
-                "the requested surface transform is not supported by the surface"
-            },
-            SwapchainCreationError::UnsupportedCompositeAlpha => {
-                "the requested composite alpha is not supported by the surface"
-            },
-            SwapchainCreationError::UnsupportedPresentMode => {
-                "the requested present mode is not supported by the surface"
-            },
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
-            SwapchainCreationError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for SwapchainCreationError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error_oom!(SwapchainCreationError {
+    DeviceLost: "the device was lost",
+    SurfaceLost: "the surface was lost",
+    SurfaceInUse: "the surface is already used by another swapchain",
+    NativeWindowInUse: "the window is already in use by another API",
+    MissingExtension: "the `VK_KHR_swapchain` extension was not enabled",
+    OldSwapchainSurfaceMismatch: "surface mismatch between old and new swapchain",
+    OldSwapchainAlreadyUsed: "old swapchain has already been used to recreate a new one",
+    UnsupportedMinImagesCount: "the requested number of swapchain images is not supported by the surface",
+    UnsupportedMaxImagesCount: "the requested number of swapchain images is not supported by the surface",
+    UnsupportedFormat: "the requested image format is not supported by the surface",
+    UnsupportedDimensions: "the requested dimensions are not supported by the surface",
+    UnsupportedArrayLayers: "the requested array layers count is not supported by the surface",
+    UnsupportedUsageFlags: "the requested image usage is not supported by the surface",
+    UnsupportedSurfaceTransform: "the requested surface transform is not supported by the surface",
+    UnsupportedCompositeAlpha: "the requested composite alpha is not supported by the surface",
+    UnsupportedPresentMode: "the requested present mode is not supported by the surface"
+});
 
 impl From<Error> for SwapchainCreationError {
     #[inline]
@@ -802,13 +708,6 @@ impl From<Error> for SwapchainCreationError {
             },
             _ => panic!("unexpected error: {:?}", err),
         }
-    }
-}
-
-impl From<OomError> for SwapchainCreationError {
-    #[inline]
-    fn from(err: OomError) -> SwapchainCreationError {
-        SwapchainCreationError::OomError(err)
     }
 }
 
@@ -963,18 +862,7 @@ pub enum AcquireError {
 
 impl error::Error for AcquireError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            AcquireError::OomError(_) => "not enough memory",
-            AcquireError::DeviceLost => "the connection to the device has been lost",
-            AcquireError::Timeout => "no image is available for acquiring yet",
-            AcquireError::SurfaceLost => "the surface of this swapchain is no longer valid",
-            AcquireError::OutOfDate => "the swapchain needs to be recreated",
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
             AcquireError::OomError(ref err) => Some(err),
             _ => None,
@@ -985,7 +873,13 @@ impl error::Error for AcquireError {
 impl fmt::Display for AcquireError {
     #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        write!(fmt, "{}", match *self {
+            AcquireError::OomError(_) => "not enough memory",
+            AcquireError::DeviceLost => "the connection to the device has been lost",
+            AcquireError::Timeout => "no image is available for acquiring yet",
+            AcquireError::SurfaceLost => "the surface of this swapchain is no longer valid",
+            AcquireError::OutOfDate => "the swapchain needs to be recreated",
+        })
     }
 }
 

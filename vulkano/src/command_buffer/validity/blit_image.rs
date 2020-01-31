@@ -233,10 +233,12 @@ pub enum CheckBlitImageError {
     IncompatibleRangeForImageType,
 }
 
-impl error::Error for CheckBlitImageError {
+impl error::Error for CheckBlitImageError {}
+
+impl fmt::Display for CheckBlitImageError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "{}", match *self {
             CheckBlitImageError::MissingTransferSourceUsage => {
                 "the source is missing the transfer source usage"
             },
@@ -273,13 +275,6 @@ impl error::Error for CheckBlitImageError {
             CheckBlitImageError::IncompatibleRangeForImageType => {
                 "the top-left and/or bottom-right coordinates are incompatible with the image type"
             },
-        }
-    }
-}
-
-impl fmt::Display for CheckBlitImageError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        })
     }
 }

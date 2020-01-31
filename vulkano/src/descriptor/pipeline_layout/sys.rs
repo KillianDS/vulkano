@@ -275,22 +275,7 @@ pub enum PipelineLayoutCreationError {
 
 impl error::Error for PipelineLayoutCreationError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            PipelineLayoutCreationError::OomError(_) => {
-                "not enough memory available"
-            },
-            PipelineLayoutCreationError::LimitsError(_) => {
-                "the pipeline layout description doesn't fulfill the limit requirements"
-            },
-            PipelineLayoutCreationError::InvalidPushConstant => {
-                "one of the push constants range didn't obey the rules"
-            },
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
             PipelineLayoutCreationError::OomError(ref err) => Some(err),
             PipelineLayoutCreationError::LimitsError(ref err) => Some(err),
@@ -302,7 +287,17 @@ impl error::Error for PipelineLayoutCreationError {
 impl fmt::Display for PipelineLayoutCreationError {
     #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        write!(fmt, "{}", match *self {
+            PipelineLayoutCreationError::OomError(_) => {
+                "not enough memory available"
+            },
+            PipelineLayoutCreationError::LimitsError(_) => {
+                "the pipeline layout description doesn't fulfill the limit requirements"
+            },
+            PipelineLayoutCreationError::InvalidPushConstant => {
+                "one of the push constants range didn't obey the rules"
+            },
+        })
     }
 }
 

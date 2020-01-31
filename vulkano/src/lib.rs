@@ -72,6 +72,71 @@ extern crate vk_sys as vk;
 pub extern crate half;
 
 #[macro_use]
+mod helper {
+    //TODO: consider macros that include OomError and LoadingError, theses occur a lot also.
+    macro_rules! simple_error {
+        ( $name:ident {
+            $($err:ident: $desc:literal),+
+        } ) => (
+            #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+            pub enum $name {
+                $($err),+
+            }
+            impl std::error::Error for $name {}
+            impl std::fmt::Display for $name {
+                #[inline]
+                fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+                    write!(fmt, "{}", match *self {
+                        $(
+                            $name::$err => $desc,
+                        )+
+                    })
+                }
+            }
+        )
+    }
+    
+    macro_rules! simple_error_oom {
+        ( $name:ident {
+            $($err:ident: $desc:literal),+
+        } ) => (
+            #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+            pub enum $name {
+                OomError(OomError),
+                $($err),+
+            }
+            impl std::error::Error for $name {
+                #[inline]
+                fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+                    match *self {
+                        $name::OomError(ref err) => Some(err),
+                        _ => None,
+                    }
+                }
+            }
+            impl std::fmt::Display for $name {
+                #[inline]
+                fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+                    write!(fmt, "{}", match *self {
+                        $name::OomError(_) => "Not enough memory available",
+                        $(
+                            $name::$err => $desc,
+                        )+
+                    })
+                }
+            }
+
+            impl From<OomError> for $name {
+                #[inline]
+                fn from(err: OomError) -> $name {
+                    $name::OomError(err)
+                }
+            }
+        )
+    }
+}
+
+#[macro_use]
 mod tests;
 
 #[macro_use]
@@ -154,20 +219,15 @@ pub enum OomError {
     OutOfDeviceMemory,
 }
 
-impl error::Error for OomError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            OomError::OutOfHostMemory => "no memory available on the host",
-            OomError::OutOfDeviceMemory => "no memory available on the graphical device",
-        }
-    }
-}
+impl error::Error for OomError {}
 
 impl fmt::Display for OomError {
     #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        write!(fmt, "{}", match *self {
+            OomError::OutOfHostMemory => "no memory available on the host",
+            OomError::OutOfDeviceMemory => "no memory available on the graphical device",
+        })
     }
 }
 

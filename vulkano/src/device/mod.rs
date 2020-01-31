@@ -93,7 +93,6 @@ use fnv::FnvHasher;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::error;
 use std::fmt;
 use std::hash::BuildHasherDefault;
 use std::mem::MaybeUninit;
@@ -609,70 +608,17 @@ impl Iterator for QueuesIter {
 impl ExactSizeIterator for QueuesIter {
 }
 
-/// Error that can be returned when creating a device.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DeviceCreationError {
-    /// Failed to create the device for an implementation-specific reason.
-    InitializationFailed,
-    /// You have reached the limit to the number of devices that can be created from the same
-    /// physical device.
-    TooManyObjects,
-    /// Failed to connect to the device.
-    DeviceLost,
-    /// Some of the requested features are unsupported by the physical device.
-    FeatureNotPresent,
-    /// Some of the requested device extensions are not supported by the physical device.
-    ExtensionNotPresent,
-    /// Tried to create too many queues for a given family.
-    TooManyQueuesForFamily,
-    /// The priority of one of the queues is out of the [0.0; 1.0] range.
-    PriorityOutOfRange,
-    /// There is no memory available on the host (ie. the CPU, RAM, etc.).
-    OutOfHostMemory,
-    /// There is no memory available on the device (ie. video memory).
-    OutOfDeviceMemory,
-}
-
-impl error::Error for DeviceCreationError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            DeviceCreationError::InitializationFailed => {
-                "failed to create the device for an implementation-specific reason"
-            },
-            DeviceCreationError::OutOfHostMemory => "no memory available on the host",
-            DeviceCreationError::OutOfDeviceMemory => {
-                "no memory available on the graphical device"
-            },
-            DeviceCreationError::DeviceLost => {
-                "failed to connect to the device"
-            },
-            DeviceCreationError::TooManyQueuesForFamily => {
-                "tried to create too many queues for a given family"
-            },
-            DeviceCreationError::FeatureNotPresent => {
-                "some of the requested features are unsupported by the physical device"
-            },
-            DeviceCreationError::PriorityOutOfRange => {
-                "the priority of one of the queues is out of the [0.0; 1.0] range"
-            },
-            DeviceCreationError::ExtensionNotPresent => {
-                "some of the requested device extensions are not supported by the physical device"
-            },
-            DeviceCreationError::TooManyObjects => {
-                "you have reached the limit to the number of devices that can be created from the
-                 same physical device"
-            },
-        }
-    }
-}
-
-impl fmt::Display for DeviceCreationError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error!(DeviceCreationError {
+    InitializationFailed: "failed to create the device for an implementation-specific reason",
+    OutOfHostMemory: "no memory available on the host",
+    OutOfDeviceMemory: "no memory available on the graphical device",
+    DeviceLost: "failed to connect to the device",
+    TooManyQueuesForFamily: "tried to create too many queues for a given family",
+    FeatureNotPresent: "some of the requested features are unsupported by the physical device",
+    PriorityOutOfRange: "the priority of one of the queues is out of the [0.0; 1.0] range",
+    ExtensionNotPresent: "some of the requested device extensions are not supported by the physical device",
+    TooManyObjects: "you have reached the limit to the number of devices that can be created from the same physical device"
+});
 
 impl From<Error> for DeviceCreationError {
     #[inline]

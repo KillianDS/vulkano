@@ -8,8 +8,6 @@
 // according to those terms.
 
 use std::cmp;
-use std::error;
-use std::fmt;
 use std::mem;
 
 use VulkanObject;
@@ -52,38 +50,11 @@ pub fn check_update_buffer<B, D>(device: &Device, buffer: &B, data: &D)
     Ok(())
 }
 
-/// Error that can happen when attempting to add an `update_buffer` command.
-#[derive(Debug, Copy, Clone)]
-pub enum CheckUpdateBufferError {
-    /// The "transfer destination" usage must be enabled on the buffer.
-    BufferMissingUsage,
-    /// The data or size must be 4-bytes aligned.
-    WrongAlignment,
-    /// The data must not be larger than 64k bytes.
-    DataTooLarge,
-}
-
-impl error::Error for CheckUpdateBufferError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            CheckUpdateBufferError::BufferMissingUsage => {
-                "the transfer destination usage must be enabled on the buffer"
-            },
-            CheckUpdateBufferError::WrongAlignment => {
-                "the offset or size are not aligned to 4 bytes"
-            },
-            CheckUpdateBufferError::DataTooLarge => "data is too large",
-        }
-    }
-}
-
-impl fmt::Display for CheckUpdateBufferError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error!(CheckUpdateBufferError {
+    BufferMissingUsage: "the transfer destination usage must be enabled on the buffer",
+    WrongAlignment: "the offset or size are not aligned to 4 bytes",
+    DataTooLarge: "data is too large"
+});
 
 #[cfg(test)]
 mod tests {

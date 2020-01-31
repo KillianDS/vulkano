@@ -172,15 +172,7 @@ pub enum LayersListError {
 
 impl error::Error for LayersListError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            LayersListError::LoadingError(_) => "failed to load the Vulkan shared library",
-            LayersListError::OomError(_) => "not enough memory available",
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
             LayersListError::LoadingError(ref err) => Some(err),
             LayersListError::OomError(ref err) => Some(err),
@@ -191,7 +183,10 @@ impl error::Error for LayersListError {
 impl fmt::Display for LayersListError {
     #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        write!(fmt, "{}", match *self {
+            LayersListError::LoadingError(_) => "failed to load the Vulkan shared library",
+            LayersListError::OomError(_) => "not enough memory available",
+        })
     }
 }
 

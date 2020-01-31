@@ -260,15 +260,7 @@ pub enum SubmitCommandBufferError {
 
 impl error::Error for SubmitCommandBufferError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            SubmitCommandBufferError::OomError(_) => "not enough memory",
-            SubmitCommandBufferError::DeviceLost => "the connection to the device has been lost",
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
             SubmitCommandBufferError::OomError(ref err) => Some(err),
             _ => None,
@@ -279,7 +271,10 @@ impl error::Error for SubmitCommandBufferError {
 impl fmt::Display for SubmitCommandBufferError {
     #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        write!(fmt, "{}", match *self {
+            SubmitCommandBufferError::OomError(_) => "not enough memory",
+            SubmitCommandBufferError::DeviceLost => "the connection to the device has been lost",
+        })
     }
 }
 

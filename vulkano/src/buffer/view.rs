@@ -275,68 +275,12 @@ unsafe impl<T, F, B> BufferViewRef for T
     }
 }
 
-/// Error that can happen when creating a buffer view.
-#[derive(Debug, Copy, Clone)]
-pub enum BufferViewCreationError {
-    /// Out of memory.
-    OomError(OomError),
-
-    /// The buffer was not creating with one of the `storage_texel_buffer` or
-    /// `uniform_texel_buffer` usages.
-    WrongBufferUsage,
-
-    /// The offset within the buffer is not a multiple of the `min_texel_buffer_offset_alignment`
-    /// limit.
-    WrongBufferAlignment,
-
-    /// The requested format is not supported for this usage.
-    UnsupportedFormat,
-
-    /// The maximum number of elements in the buffer view has been exceeded.
-    MaxTexelBufferElementsExceeded,
-}
-
-impl error::Error for BufferViewCreationError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            BufferViewCreationError::OomError(_) => "out of memory when creating buffer view",
-            BufferViewCreationError::WrongBufferUsage =>
-                "the buffer is missing correct usage flags",
-            BufferViewCreationError::WrongBufferAlignment => {
-                "the offset within the buffer is not a multiple of the
-                 `min_texel_buffer_offset_alignment` limit"
-            },
-            BufferViewCreationError::UnsupportedFormat =>
-                "the requested format is not supported for this usage",
-            BufferViewCreationError::MaxTexelBufferElementsExceeded => {
-                "the maximum number of texel elements is exceeded"
-            },
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
-            BufferViewCreationError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for BufferViewCreationError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
-
-impl From<OomError> for BufferViewCreationError {
-    #[inline]
-    fn from(err: OomError) -> BufferViewCreationError {
-        BufferViewCreationError::OomError(err)
-    }
-}
+simple_error_oom!(BufferViewCreationError {
+    WrongBufferUsage: "the buffer is missing correct usage flags",
+    WrongBufferAlignment: "the offset within the buffer is not a multiple of the `min_texel_buffer_offset_alignment` limit",
+    UnsupportedFormat: "the requested format is not supported for this usage",
+    MaxTexelBufferElementsExceeded: "the maximum number of texel elements is exceeded"
+});
 
 impl From<Error> for BufferViewCreationError {
     #[inline]

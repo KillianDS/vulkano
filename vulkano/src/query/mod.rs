@@ -14,7 +14,6 @@
 //! pool and the slot id within that query pool.
 
 use std::error;
-use std::fmt;
 use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::Arc;
@@ -260,49 +259,18 @@ impl Drop for UnsafeQueryPool {
     }
 }
 
-/// Error that can happen when creating a buffer.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum QueryPoolCreationError {
-    /// Not enough memory.
-    OomError(OomError),
-    /// A pipeline statistics pool was requested but the corresponding feature wasn't enabled.
-    PipelineStatisticsQueryFeatureNotEnabled,
-}
+// /// Error that can happen when creating a buffer.
+// #[derive(Clone, Debug, PartialEq, Eq)]
+// pub enum QueryPoolCreationError {
+//     /// Not enough memory.
+//     OomError(OomError),
+//     /// A pipeline statistics pool was requested but the corresponding feature wasn't enabled.
+//     PipelineStatisticsQueryFeatureNotEnabled,
+// }
 
-impl error::Error for QueryPoolCreationError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            QueryPoolCreationError::OomError(_) => "not enough memory available",
-            QueryPoolCreationError::PipelineStatisticsQueryFeatureNotEnabled => {
-                "a pipeline statistics pool was requested but the corresponding feature \
-                 wasn't enabled"
-            },
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
-            QueryPoolCreationError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for QueryPoolCreationError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
-
-impl From<OomError> for QueryPoolCreationError {
-    #[inline]
-    fn from(err: OomError) -> QueryPoolCreationError {
-        QueryPoolCreationError::OomError(err)
-    }
-}
+simple_error_oom!(QueryPoolCreationError { 
+    PipelineStatisticsQueryFeatureNotEnabled: "a pipeline statistics pool was requested but the corresponding feature wasn't enabled"
+});
 
 impl From<Error> for QueryPoolCreationError {
     #[inline]

@@ -361,8 +361,18 @@ pub enum CommandBufferExecError {
 
 impl error::Error for CommandBufferExecError {
     #[inline]
-    fn description(&self) -> &str {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
+            CommandBufferExecError::AccessError { ref error, .. } => Some(error),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for CommandBufferExecError {
+    #[inline]
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "{}", match *self {
             CommandBufferExecError::AccessError { .. } => {
                 "access to a resource has been denied"
             },
@@ -375,21 +385,6 @@ impl error::Error for CommandBufferExecError {
                 "the command buffer or one of the secondary command buffers it executes is \
                  already in use by the GPU and was not created with the \"concurrent\" flag"
             },
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
-            CommandBufferExecError::AccessError { ref error, .. } => Some(error),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for CommandBufferExecError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        })
     }
 }

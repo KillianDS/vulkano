@@ -37,9 +37,7 @@
 //! variable, it will be immediately destroyed and your callback will not work.
 //!
 
-use std::error;
 use std::ffi::CStr;
-use std::fmt;
 use std::mem::MaybeUninit;
 use std::os::raw::c_void;
 use std::panic;
@@ -310,29 +308,9 @@ impl MessageType {
     }
 }
 
-/// Error that can happen when creating a debug callback.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DebugCallbackCreationError {
-    /// The `EXT_debug_report` extension was not enabled.
-    MissingExtension,
-}
-
-impl error::Error for DebugCallbackCreationError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            DebugCallbackCreationError::MissingExtension =>
-                "the `EXT_debug_report` extension was not enabled",
-        }
-    }
-}
-
-impl fmt::Display for DebugCallbackCreationError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error!(DebugCallbackCreationError {
+    MissingExtension: "the `EXT_debug_report` extension was not enabled"
+});
 
 impl From<Error> for DebugCallbackCreationError {
     #[inline]

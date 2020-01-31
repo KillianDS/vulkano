@@ -386,23 +386,7 @@ pub enum BufferCreationError {
 
 impl error::Error for BufferCreationError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            BufferCreationError::AllocError(_) => "allocating memory failed",
-            BufferCreationError::SparseBindingFeatureNotEnabled => {
-                "sparse binding was requested but the corresponding feature wasn't enabled"
-            },
-            BufferCreationError::SparseResidencyBufferFeatureNotEnabled => {
-                "sparse residency was requested but the corresponding feature wasn't enabled"
-            },
-            BufferCreationError::SparseResidencyAliasedFeatureNotEnabled => {
-                "sparse aliasing was requested but the corresponding feature wasn't enabled"
-            },
-        }
-    }
-
-    #[inline]
-    fn cause(&self) -> Option<&dyn error::Error> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
             BufferCreationError::AllocError(ref err) => Some(err),
             _ => None,
@@ -413,7 +397,18 @@ impl error::Error for BufferCreationError {
 impl fmt::Display for BufferCreationError {
     #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        write!(fmt, "{}", match *self {
+            BufferCreationError::AllocError(_) => "allocating memory failed",
+            BufferCreationError::SparseBindingFeatureNotEnabled => {
+                "sparse binding was requested but the corresponding feature wasn't enabled"
+            },
+            BufferCreationError::SparseResidencyBufferFeatureNotEnabled => {
+                "sparse residency was requested but the corresponding feature wasn't enabled"
+            },
+            BufferCreationError::SparseResidencyAliasedFeatureNotEnabled => {
+                "sparse aliasing was requested but the corresponding feature wasn't enabled"
+            },
+        })
     }
 }
 

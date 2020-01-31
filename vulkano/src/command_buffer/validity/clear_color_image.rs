@@ -7,9 +7,6 @@
 // notice may not be copied, modified, or distributed except
 // according to those terms.
 
-use std::error;
-use std::fmt;
-
 use VulkanObject;
 use device::Device;
 use image::ImageAccess;
@@ -43,32 +40,7 @@ pub fn check_clear_color_image<I>(device: &Device, image: &I, first_layer: u32, 
     Ok(())
 }
 
-/// Error that can happen from `check_clear_color_image`.
-#[derive(Debug, Copy, Clone)]
-pub enum CheckClearColorImageError {
-    /// The image is missing the transfer destination usage.
-    MissingTransferUsage,
-    /// The array layers and mipmap levels are out of range.
-    OutOfRange,
-}
-
-impl error::Error for CheckClearColorImageError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            CheckClearColorImageError::MissingTransferUsage => {
-                "the image is missing the transfer destination usage"
-            },
-            CheckClearColorImageError::OutOfRange => {
-                "the array layers and mipmap levels are out of range"
-            },
-        }
-    }
-}
-
-impl fmt::Display for CheckClearColorImageError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error!(CheckClearColorImageError {
+    MissingTransferUsage: "the image is missing the transfer destination usage",
+    OutOfRange: "the array layers and mipmap levels are out of range"
+});

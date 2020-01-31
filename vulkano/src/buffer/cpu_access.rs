@@ -17,8 +17,6 @@
 //! or write and write simultaneously will block.
 
 use smallvec::SmallVec;
-use std::error;
-use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
 use std::mem;
@@ -489,35 +487,10 @@ impl<'a, T: ?Sized + 'a> Deref for ReadLock<'a, T> {
     }
 }
 
-/// Error when attempting to CPU-read a buffer.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ReadLockError {
-    /// The buffer is already locked for write mode by the CPU.
-    CpuWriteLocked,
-    /// The buffer is already locked for write mode by the GPU.
-    GpuWriteLocked,
-}
-
-impl error::Error for ReadLockError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            ReadLockError::CpuWriteLocked => {
-                "the buffer is already locked for write mode by the CPU"
-            },
-            ReadLockError::GpuWriteLocked => {
-                "the buffer is already locked for write mode by the GPU"
-            },
-        }
-    }
-}
-
-impl fmt::Display for ReadLockError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error!(ReadLockError {
+    CpuWriteLocked: "the buffer is already locked for write mode by the CPU",
+    GpuWriteLocked: "the buffer is already locked for write mode by the GPU"
+});
 
 /// Object that can be used to read or write the content of a `CpuAccessibleBuffer`.
 ///
@@ -557,35 +530,10 @@ impl<'a, T: ?Sized + 'a> DerefMut for WriteLock<'a, T> {
     }
 }
 
-/// Error when attempting to CPU-write a buffer.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum WriteLockError {
-    /// The buffer is already locked by the CPU.
-    CpuLocked,
-    /// The buffer is already locked by the GPU.
-    GpuLocked,
-}
-
-impl error::Error for WriteLockError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            WriteLockError::CpuLocked => {
-                "the buffer is already locked by the CPU"
-            },
-            WriteLockError::GpuLocked => {
-                "the buffer is already locked by the GPU"
-            },
-        }
-    }
-}
-
-impl fmt::Display for WriteLockError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error!(WriteLockError {
+    CpuLocked: "the buffer is already locked by the CPU",
+    GpuLocked: "the buffer is already locked by the GPU"
+});
 
 #[cfg(test)]
 mod tests {

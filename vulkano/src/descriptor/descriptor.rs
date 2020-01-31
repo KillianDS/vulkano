@@ -570,10 +570,12 @@ pub enum DescriptorDescSupersetError {
     },
 }
 
-impl error::Error for DescriptorDescSupersetError {
+impl error::Error for DescriptorDescSupersetError {}
+
+impl fmt::Display for DescriptorDescSupersetError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "{}", match *self {
             DescriptorDescSupersetError::ArrayTooSmall { .. } => {
                 "the number of array elements of the descriptor is smaller than expected"
             },
@@ -598,14 +600,7 @@ impl error::Error for DescriptorDescSupersetError {
             DescriptorDescSupersetError::IncompatibleArrayLayers { .. } => {
                 "the array layers of the descriptors aren't compatible"
             },
-        }
-    }
-}
-
-impl fmt::Display for DescriptorDescSupersetError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        })
     }
 }
 
@@ -778,26 +773,6 @@ impl From<ShaderStages> for PipelineStages {
     }
 }
 
-/// Error when checking whether some shader stages are superset of others.
-#[derive(Debug, Clone)]
-pub enum ShaderStagesSupersetError {
-    NotSuperset,
-}
-
-impl error::Error for ShaderStagesSupersetError {
-    #[inline]
-    fn description(&self) -> &str {
-        match *self {
-            ShaderStagesSupersetError::NotSuperset => {
-                "shader stages not a superset"
-            },
-        }
-    }
-}
-
-impl fmt::Display for ShaderStagesSupersetError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
-    }
-}
+simple_error!(ShaderStagesSupersetError {
+    NotSuperset: "shader stages not a superset"
+});

@@ -47,24 +47,19 @@ pub enum CheckFillBufferError {
     WrongAlignment,
 }
 
-impl error::Error for CheckFillBufferError {
+impl error::Error for CheckFillBufferError {}
+
+impl fmt::Display for CheckFillBufferError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "{}", match *self {
             CheckFillBufferError::BufferMissingUsage => {
                 "the transfer destination usage must be enabled on the buffer"
             },
             CheckFillBufferError::WrongAlignment => {
                 "the offset or size are not aligned to 4 bytes"
             },
-        }
-    }
-}
-
-impl fmt::Display for CheckFillBufferError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        })
     }
 }
 

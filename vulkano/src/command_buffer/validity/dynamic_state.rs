@@ -153,10 +153,12 @@ pub enum CheckDynamicStateValidityError {
     ReferenceMissing,
 }
 
-impl error::Error for CheckDynamicStateValidityError {
+impl error::Error for CheckDynamicStateValidityError {}
+
+impl fmt::Display for CheckDynamicStateValidityError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "{}", match *self {
             CheckDynamicStateValidityError::LineWidthNotDynamic => {
                 "passed a dynamic line width, while the pipeline doesn't have line width set as \
                  dynamic"
@@ -205,14 +207,7 @@ impl error::Error for CheckDynamicStateValidityError {
             CheckDynamicStateValidityError::ReferenceMissing => {
                 "the pipeline has dynamic reference, but no reference was passed"
             },
-        }
-    }
-}
-
-impl fmt::Display for CheckDynamicStateValidityError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        })
     }
 }
 

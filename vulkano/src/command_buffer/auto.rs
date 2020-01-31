@@ -1615,18 +1615,7 @@ macro_rules! err_gen {
 
         impl error::Error for $name {
             #[inline]
-            fn description(&self) -> &str {
-                match *self {
-                    $(
-                        $name::$err(_) => {
-                            concat!("a ", stringify!($err))
-                        }
-                    )+
-                }
-            }
-
-            #[inline]
-            fn cause(&self) -> Option<&dyn error::Error> {
+            fn source(&self) -> Option<&(dyn error::Error + 'static)> {
                 match *self {
                     $(
                         $name::$err(ref err) => Some(err),
@@ -1638,7 +1627,13 @@ macro_rules! err_gen {
         impl fmt::Display for $name {
             #[inline]
             fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-                write!(fmt, "{}", error::Error::description(self))
+                write!(fmt, "{}", match *self {
+                    $(
+                        $name::$err(_) => {
+                            concat!("a ", stringify!($err))
+                        }
+                    )+
+                })
             }
         }
 
@@ -1783,10 +1778,12 @@ pub enum AutoCommandBufferBuilderContextError {
     IncompatibleRenderPass,
 }
 
-impl error::Error for AutoCommandBufferBuilderContextError {
+impl error::Error for AutoCommandBufferBuilderContextError {}
+
+impl fmt::Display for AutoCommandBufferBuilderContextError {
     #[inline]
-    fn description(&self) -> &str {
-        match *self {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "{}", match *self {
             AutoCommandBufferBuilderContextError::ForbiddenInSecondary => {
                 "operation forbidden in a secondary command buffer"
             },
@@ -1816,13 +1813,6 @@ impl error::Error for AutoCommandBufferBuilderContextError {
                 "tried to use a graphics pipeline whose render pass is incompatible with the \
                  current render pass"
             },
-        }
-    }
-}
-
-impl fmt::Display for AutoCommandBufferBuilderContextError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", error::Error::description(self))
+        })
     }
 }
