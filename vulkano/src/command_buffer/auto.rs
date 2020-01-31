@@ -1604,7 +1604,6 @@ unsafe impl<P> DeviceOwned for AutoCommandBuffer<P> {
     }
 }
 
-//TODO: Replace with simple_error macro from base crate
 macro_rules! err_gen {
     ($name:ident { $($err:ident,)+ }) => (
         #[derive(Debug, Clone)]
