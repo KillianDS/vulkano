@@ -107,7 +107,7 @@ mod helper {
             }
             impl std::error::Error for $name {
                 #[inline]
-                fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+                fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
                     match *self {
                         $name::OomError(ref err) => Some(err),
                         _ => None,
@@ -210,7 +210,7 @@ pub unsafe trait SynchronizedVulkanObject {
     fn internal_object_guard(&self) -> MutexGuard<Self::Object>;
 }
 
-/// Error type returned by most Vulkan functions.
+/// Common error type returned by many Vulkan functions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OomError {
     /// There is no memory available on the host (ie. the CPU, RAM, etc.).

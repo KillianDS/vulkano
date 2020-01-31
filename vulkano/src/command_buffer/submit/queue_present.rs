@@ -8,7 +8,6 @@
 // according to those terms.
 
 use smallvec::SmallVec;
-use std::error;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ptr;
@@ -197,45 +196,11 @@ impl<'a> fmt::Debug for SubmitPresentBuilder<'a> {
     }
 }
 
-/// Error that can happen when submitting the present prototype.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(u32)]
-pub enum SubmitPresentError {
-    /// Not enough memory.
-    OomError(OomError),
-
-    /// The connection to the device has been lost.
-    DeviceLost,
-
-    /// The surface is no longer accessible and must be recreated.
-    SurfaceLost,
-
-    /// The surface has changed in a way that makes the swapchain unusable. You must query the
-    /// surface's new properties and recreate a new swapchain if you want to continue drawing.
-    OutOfDate,
-}
-
-impl error::Error for SubmitPresentError {
-    #[inline]
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match *self {
-            SubmitPresentError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for SubmitPresentError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", match *self {
-            SubmitPresentError::OomError(_) => "not enough memory",
-            SubmitPresentError::DeviceLost => "the connection to the device has been lost",
-            SubmitPresentError::SurfaceLost => "the surface of this swapchain is no longer valid",
-            SubmitPresentError::OutOfDate => "the swapchain needs to be recreated",
-        })
-    }
-}
+simple_error_oom!(SubmitPresentError {
+    DeviceLost: "the connection to the device has been lost",
+    SurfaceLost: "the surface of this swapchain is no longer valid",
+    OutOfDate: "the swapchain needs to be recreated"
+});
 
 impl From<Error> for SubmitPresentError {
     #[inline]

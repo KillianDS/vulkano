@@ -13,7 +13,6 @@
 //! represent a collection of queries. Whenever you use a query, you have to specify both the query
 //! pool and the slot id within that query pool.
 
-use std::error;
 use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::Arc;

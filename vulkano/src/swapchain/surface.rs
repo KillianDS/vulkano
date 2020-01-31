@@ -655,42 +655,9 @@ impl From<Error> for SurfaceCreationError {
     }
 }
 
-/// Error that can happen when retrieving a surface's capabilities.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(u32)]
-pub enum CapabilitiesError {
-    /// Not enough memory.
-    OomError(OomError),
-    /// The surface is no longer accessible and must be recreated.
-    SurfaceLost,
-}
-
-impl error::Error for CapabilitiesError {
-    #[inline]
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match *self {
-            CapabilitiesError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for CapabilitiesError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", match *self {
-            CapabilitiesError::OomError(_) => "not enough memory",
-            CapabilitiesError::SurfaceLost => "the surface is no longer valid",
-        })
-    }
-}
-
-impl From<OomError> for CapabilitiesError {
-    #[inline]
-    fn from(err: OomError) -> CapabilitiesError {
-        CapabilitiesError::OomError(err)
-    }
-}
+simple_error_oom!(CapabilitiesError {
+    SurfaceLost: "the surface is no longer valid"
+});
 
 impl From<Error> for CapabilitiesError {
     #[inline]

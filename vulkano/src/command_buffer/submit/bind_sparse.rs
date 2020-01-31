@@ -8,7 +8,6 @@
 // according to those terms.
 
 use smallvec::SmallVec;
-use std::error;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ptr;
@@ -452,36 +451,9 @@ impl<'a> SubmitBindSparseImageBindBuilder<'a> {
     // TODO: finish
 }
 
-/// Error that can happen when submitting the present prototype.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(u32)]
-pub enum SubmitBindSparseError {
-    /// Not enough memory.
-    OomError(OomError),
-
-    /// The connection to the device has been lost.
-    DeviceLost,
-}
-
-impl error::Error for SubmitBindSparseError {
-    #[inline]
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match *self {
-            SubmitBindSparseError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for SubmitBindSparseError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", match *self {
-            SubmitBindSparseError::OomError(_) => "not enough memory",
-            SubmitBindSparseError::DeviceLost => "the connection to the device has been lost",
-        })
-    }
-}
+simple_error_oom!(SubmitBindSparseError {
+    DeviceLost: "the connection to the device has been lost"
+});
 
 impl From<Error> for SubmitBindSparseError {
     #[inline]

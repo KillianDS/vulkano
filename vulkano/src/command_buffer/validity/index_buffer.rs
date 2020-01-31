@@ -7,9 +7,6 @@
 // notice may not be copied, modified, or distributed except
 // according to those terms.
 
-use std::error;
-use std::fmt;
-
 use VulkanObject;
 use buffer::BufferAccess;
 use buffer::TypedBufferAccess;
@@ -49,36 +46,12 @@ pub struct CheckIndexBuffer {
     pub num_indices: usize,
 }
 
-/// Error that can happen when checking whether binding an index buffer is valid.
-#[derive(Debug, Copy, Clone)]
-pub enum CheckIndexBufferError {
-    /// The "index buffer" usage must be enabled on the index buffer.
-    BufferMissingUsage,
-    /// The data or size must be 4-bytes aligned.
-    WrongAlignment,
-    /// The type of the indices is not supported by the device.
-    UnsupportIndexType,
-}
-
-impl error::Error for CheckIndexBufferError {}
-
-impl fmt::Display for CheckIndexBufferError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", match *self {
-            CheckIndexBufferError::BufferMissingUsage => {
-                "the index buffer usage must be enabled on the index buffer"
-            },
-            CheckIndexBufferError::WrongAlignment => {
-                "the sum of offset and the address of the range of VkDeviceMemory object that is \
-                 backing buffer, must be a multiple of the type indicated by indexType"
-            },
-            CheckIndexBufferError::UnsupportIndexType => {
-                "the type of the indices is not supported by the device"
-            },
-        })
-    }
-}
+simple_error!(CheckIndexBufferError {
+    BufferMissingUsage: "The index buffer usage must be enabled on the index buffer",
+    WrongAlignment: "the sum of offset and the address of the range of VkDeviceMemory object that is \
+    backing buffer, must be a multiple of the type indicated by indexType",
+    UnsupportIndexType: "the type of the indices is not supported by the device"
+});
 
 #[cfg(test)]
 mod tests {

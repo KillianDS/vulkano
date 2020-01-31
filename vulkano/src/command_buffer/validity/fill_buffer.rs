@@ -7,9 +7,6 @@
 // notice may not be copied, modified, or distributed except
 // according to those terms.
 
-use std::error;
-use std::fmt;
-
 use VulkanObject;
 use buffer::BufferAccess;
 use device::Device;
@@ -38,30 +35,10 @@ pub fn check_fill_buffer<B>(device: &Device, buffer: &B) -> Result<(), CheckFill
     Ok(())
 }
 
-/// Error that can happen when attempting to add a `fill_buffer` command.
-#[derive(Debug, Copy, Clone)]
-pub enum CheckFillBufferError {
-    /// The "transfer destination" usage must be enabled on the buffer.
-    BufferMissingUsage,
-    /// The data or size must be 4-bytes aligned.
-    WrongAlignment,
-}
-
-impl error::Error for CheckFillBufferError {}
-
-impl fmt::Display for CheckFillBufferError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", match *self {
-            CheckFillBufferError::BufferMissingUsage => {
-                "the transfer destination usage must be enabled on the buffer"
-            },
-            CheckFillBufferError::WrongAlignment => {
-                "the offset or size are not aligned to 4 bytes"
-            },
-        })
-    }
-}
+simple_error!(CheckFillBufferError {
+    BufferMissingUsage: "the transfer destination usage must be enabled on the buffer",
+    WrongAlignment: "the offset or size are not aligned to 4 bytes"
+});
 
 #[cfg(test)]
 mod tests {

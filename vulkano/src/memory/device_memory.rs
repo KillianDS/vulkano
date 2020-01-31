@@ -7,7 +7,6 @@
 // notice may not be copied, modified, or distributed except
 // according to those terms.
 
-use std::error;
 use std::fmt;
 use std::mem::MaybeUninit;
 use std::ops::Deref;

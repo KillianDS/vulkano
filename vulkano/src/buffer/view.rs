@@ -36,7 +36,6 @@
 //! let _view = BufferView::new(buffer, format::R32Uint).unwrap();
 //! ```
 
-use std::error;
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;

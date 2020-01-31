@@ -7,7 +7,6 @@
 // notice may not be copied, modified, or distributed except
 // according to those terms.
 
-use std::error;
 use std::fmt;
 use std::mem::MaybeUninit;
 use std::ptr;
@@ -839,56 +838,12 @@ impl<W> Drop for SwapchainAcquireFuture<W> {
     }
 }
 
-/// Error that can happen when calling `acquire_next_image`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(u32)]
-pub enum AcquireError {
-    /// Not enough memory.
-    OomError(OomError),
-
-    /// The connection to the device has been lost.
-    DeviceLost,
-
-    /// The timeout of the function has been reached before an image was available.
-    Timeout,
-
-    /// The surface is no longer accessible and must be recreated.
-    SurfaceLost,
-
-    /// The surface has changed in a way that makes the swapchain unusable. You must query the
-    /// surface's new properties and recreate a new swapchain if you want to continue drawing.
-    OutOfDate,
-}
-
-impl error::Error for AcquireError {
-    #[inline]
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match *self {
-            AcquireError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for AcquireError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", match *self {
-            AcquireError::OomError(_) => "not enough memory",
-            AcquireError::DeviceLost => "the connection to the device has been lost",
-            AcquireError::Timeout => "no image is available for acquiring yet",
-            AcquireError::SurfaceLost => "the surface of this swapchain is no longer valid",
-            AcquireError::OutOfDate => "the swapchain needs to be recreated",
-        })
-    }
-}
-
-impl From<OomError> for AcquireError {
-    #[inline]
-    fn from(err: OomError) -> AcquireError {
-        AcquireError::OomError(err)
-    }
-}
+simple_error_oom!(AcquireError {
+    DeviceLost: "the connection to the device has been lost",
+    Timeout: "no image is available for acquiring yet",
+    SurfaceLost: "the surface of this swapchain is no longer valid",
+    OutOfDate: "the swapchain needs to be recreated"
+});
 
 impl From<Error> for AcquireError {
     #[inline]

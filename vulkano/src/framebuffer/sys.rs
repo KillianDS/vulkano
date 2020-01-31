@@ -8,7 +8,6 @@
 // according to those terms.
 
 use smallvec::SmallVec;
-use std::error;
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
@@ -505,43 +504,9 @@ unsafe impl<'a> VulkanObject for RenderPassSys<'a> {
     }
 }
 
-/// Error that can happen when creating a compute pipeline.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum RenderPassCreationError {
-    /// Not enough memory.
-    OomError(OomError),
-    /// The maximum number of color attachments has been exceeded.
-    ColorAttachmentsLimitExceeded,
-}
-
-impl error::Error for RenderPassCreationError {
-    #[inline]
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match *self {
-            RenderPassCreationError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for RenderPassCreationError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", match *self {
-            RenderPassCreationError::OomError(_) => "not enough memory available",
-            RenderPassCreationError::ColorAttachmentsLimitExceeded => {
-                "the maximum number of color attachments has been exceeded"
-            },
-        })
-    }
-}
-
-impl From<OomError> for RenderPassCreationError {
-    #[inline]
-    fn from(err: OomError) -> RenderPassCreationError {
-        RenderPassCreationError::OomError(err)
-    }
-}
+simple_error_oom!(RenderPassCreationError {
+    ColorAttachmentsLimitExceeded: "the maximum number of color attachments has been exceeded"
+});
 
 impl From<Error> for RenderPassCreationError {
     #[inline]

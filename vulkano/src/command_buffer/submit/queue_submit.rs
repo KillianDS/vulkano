@@ -8,8 +8,6 @@
 // according to those terms.
 
 use smallvec::SmallVec;
-use std::error;
-use std::fmt;
 use std::marker::PhantomData;
 use std::ptr;
 
@@ -247,36 +245,9 @@ impl<'a> SubmitCommandBufferBuilder<'a> {
     }
 }
 
-/// Error that can happen when submitting the prototype.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(u32)]
-pub enum SubmitCommandBufferError {
-    /// Not enough memory.
-    OomError(OomError),
-
-    /// The connection to the device has been lost.
-    DeviceLost,
-}
-
-impl error::Error for SubmitCommandBufferError {
-    #[inline]
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match *self {
-            SubmitCommandBufferError::OomError(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for SubmitCommandBufferError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", match *self {
-            SubmitCommandBufferError::OomError(_) => "not enough memory",
-            SubmitCommandBufferError::DeviceLost => "the connection to the device has been lost",
-        })
-    }
-}
+simple_error_oom!(SubmitCommandBufferError {
+    DeviceLost: "the connection to the device has been lost" 
+});
 
 impl From<Error> for SubmitCommandBufferError {
     #[inline]

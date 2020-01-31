@@ -8,7 +8,6 @@
 // according to those terms.
 
 use smallvec::SmallVec;
-use std::error;
 use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::Arc;

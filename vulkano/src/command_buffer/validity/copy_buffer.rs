@@ -8,9 +8,6 @@
 // according to those terms.
 
 use std::cmp;
-use std::error;
-use std::fmt;
-
 use VulkanObject;
 use buffer::TypedBufferAccess;
 use device::Device;
@@ -61,32 +58,8 @@ pub struct CheckCopyBuffer {
     pub copy_size: usize,
 }
 
-/// Error that can happen from `check_copy_buffer`.
-#[derive(Debug, Copy, Clone)]
-pub enum CheckCopyBufferError {
-    /// The source buffer is missing the transfer source usage.
-    SourceMissingTransferUsage,
-    /// The destination buffer is missing the transfer destination usage.
-    DestinationMissingTransferUsage,
-    /// The source and destination are overlapping.
-    OverlappingRanges,
-}
-
-impl error::Error for CheckCopyBufferError {}
-
-impl fmt::Display for CheckCopyBufferError {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", match *self {
-            CheckCopyBufferError::SourceMissingTransferUsage => {
-                "the source buffer is missing the transfer source usage"
-            },
-            CheckCopyBufferError::DestinationMissingTransferUsage => {
-                "the destination buffer is missing the transfer destination usage"
-            },
-            CheckCopyBufferError::OverlappingRanges => {
-                "the source and destination are overlapping"
-            },
-        })
-    }
-}
+simple_error!(CheckCopyBufferError {
+    SourceMissingTransferUsage: "the source buffer is missing the transfer source usage",
+    DestinationMissingTransferUsage: "the destination buffer is missing the transfer destination usage",
+    OverlappingRanges: "the source and destination are overlapping"
+});
